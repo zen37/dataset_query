@@ -1,0 +1,7 @@
+.DS_Store
+.env
+.venv/
+.pytest_cache/
+__pycache__/
+output/
+*.csv
