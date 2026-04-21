@@ -7,22 +7,44 @@ from typing import Any
 from azure.kusto.data import ClientRequestProperties, KustoClient, KustoConnectionStringBuilder
 from azure.kusto.data._models import WellKnownDataSet
 
-from query_dataset.config import require_env
+from query_dataset.config import get_env, require_env
 from query_dataset.results import QueryResult
+
+
+def get_auth_mode() -> str:
+    raw_mode = (get_env("ADX_AUTH_MODE", "azure_cli") or "azure_cli").strip().lower()
+    normalized_mode = raw_mode.replace("-", "_")
+    aliases = {
+        "az_cli": "azure_cli",
+        "cli": "azure_cli",
+        "service_principal": "service_principal_secret",
+        "client_secret": "service_principal_secret",
+        "sp_secret": "service_principal_secret",
+    }
+    return aliases.get(normalized_mode, normalized_mode)
 
 
 def build_connection() -> KustoClient:
     cluster_url = require_env("ADX_CLUSTER_URL")
-    tenant_id = require_env("AZURE_TENANT_ID")
-    client_id = require_env("AZURE_CLIENT_ID")
-    client_secret = require_env("AZURE_CLIENT_SECRET")
+    auth_mode = get_auth_mode()
 
-    kcsb = KustoConnectionStringBuilder.with_aad_application_key_authentication(
-        cluster_url,
-        client_id,
-        client_secret,
-        tenant_id,
-    )
+    if auth_mode == "azure_cli":
+        kcsb = KustoConnectionStringBuilder.with_az_cli_authentication(cluster_url)
+    elif auth_mode == "service_principal_secret":
+        tenant_id = require_env("AZURE_TENANT_ID")
+        client_id = require_env("AZURE_CLIENT_ID")
+        client_secret = require_env("AZURE_CLIENT_SECRET")
+        kcsb = KustoConnectionStringBuilder.with_aad_application_key_authentication(
+            cluster_url,
+            client_id,
+            client_secret,
+            tenant_id,
+        )
+    else:
+        raise SystemExit(
+            "Unsupported ADX_AUTH_MODE. Use one of: azure_cli, service_principal_secret"
+        )
+
     return KustoClient(kcsb)
 
 

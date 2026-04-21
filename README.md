@@ -106,15 +106,27 @@ uv run python motherduck.py --file queries/motherduck/heavy.sql
 
 ## ADX prerequisites
 
-ADX access requires valid credentials in `.env`:
+ADX defaults to Azure CLI authentication, so first sign in with the Azure CLI:
+
+```bash
+az login
+```
+
+Then configure ADX in `.env`:
 
 ```env
+ADX_AUTH_MODE=azure_cli
 ADX_CLUSTER_URL=https://yourcluster.region.kusto.windows.net
 ADX_DATABASE=your_database
-AZURE_TENANT_ID=...
-AZURE_CLIENT_ID=...
-AZURE_CLIENT_SECRET=...
 ```
+
+If your account has access to multiple tenants, sign in to the right tenant before running queries:
+
+```bash
+az login --tenant your-tenant-id
+```
+
+The previous service-principal-secret flow is still available by setting `ADX_AUTH_MODE=service_principal_secret` and providing `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, and `AZURE_CLIENT_SECRET`.
 
 ADX queries are expected to live in `.kql` files under `queries/adx/`. The default example is `queries/adx/simple.kql`.
 
@@ -242,4 +254,4 @@ If you reuse an older metrics file after a schema change, the CLI now stops with
 - `duckdb.py`, `motherduck.py`, and `adx.py` are thin wrappers around the shared CLI.
 - DuckDB is pinned to `1.4.x` because MotherDuck's official docs currently describe `1.4.1` support.
 - MotherDuck uses the `md:` connection string with `MOTHERDUCK_TOKEN` authentication.
-- ADX uses `azure-kusto-data` and service principal credentials from `.env`.
+- ADX uses `azure-kusto-data` and defaults to Azure CLI authentication from your active `az login` session.
