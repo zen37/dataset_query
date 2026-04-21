@@ -53,6 +53,8 @@ DuckDB wrapper:
 
 ```bash
 uv run python duckdb.py --file queries/duckdb/heavy.sql
+uv run python duckdb.py --file queries/duckdb/local_simple.sql
+uv run python duckdb.py --file queries/duckdb/local_heavy.sql
 ```
 
 MotherDuck wrapper:
@@ -74,6 +76,53 @@ You can also pass inline queries:
 uv run query-dataset --engine duckdb --sql "select 1 as ok"
 uv run query-dataset --engine motherduck --sql "show databases"
 uv run query-dataset --engine adx --sql ".show tables"
+```
+
+## DuckDB data sources
+
+DuckDB can read local files or ADLS files with the same client. Direct SQL works as-is, so this local CSV query does not use Azure auth at all:
+
+```bash
+uv run python duckdb.py --sql "select count(*) from read_csv_auto('/Users/mihai/data/iot/PdM_telemetry.csv')"
+```
+
+For the default DuckDB query, configure one path and format in `.env`:
+
+```env
+DUCKDB_DATA_SOURCE=local
+DUCKDB_DATA_FORMAT=csv
+DUCKDB_DATA_PATH=/Users/mihai/data/iot/PdM_telemetry.csv
+```
+
+Supported `DUCKDB_DATA_FORMAT` values are `parquet`, `csv`, `json`, and `auto`. `auto` or an omitted format infers from the path extension and falls back to Parquet.
+
+To keep using ADLS, keep the data source as `adls` and provide `ADLS_URI` plus the usual ADLS auth settings:
+
+```env
+DUCKDB_DATA_SOURCE=adls
+DUCKDB_DATA_FORMAT=parquet
+ADLS_URI=abfss://myaccount.dfs.core.windows.net/myfilesystem/path/*.parquet
+ADLS_AUTH_MODE=credential_chain
+AZURE_CREDENTIAL_CHAIN=cli;env
+```
+
+You can also register the Predictive Maintenance files as temp views before each query. These paths can be local files or ADLS URLs, and they use `DUCKDB_DATA_FORMAT` unless you set a per-view format such as `DUCKDB_TELEMETRY_FORMAT=csv`:
+
+```env
+DUCKDB_DATA_SOURCE=local
+DUCKDB_DATA_FORMAT=csv
+DUCKDB_TELEMETRY_PATH=/Users/mihai/data/iot/PdM_telemetry.csv
+DUCKDB_ERRORS_PATH=/Users/mihai/data/iot/PdM_errors.csv
+DUCKDB_MAINT_PATH=/Users/mihai/data/iot/PdM_maint.csv
+DUCKDB_FAILURES_PATH=/Users/mihai/data/iot/PdM_failures.csv
+DUCKDB_MACHINES_PATH=/Users/mihai/data/iot/PdM_machines.csv
+```
+
+With those view paths set, the local examples can run without hard-coded file paths in SQL:
+
+```bash
+uv run python duckdb.py --file queries/duckdb/local_simple.sql
+uv run python duckdb.py --file queries/duckdb/local_heavy.sql
 ```
 
 ## MotherDuck prerequisites
